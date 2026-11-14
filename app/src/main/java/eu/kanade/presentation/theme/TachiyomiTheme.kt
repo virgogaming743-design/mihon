@@ -25,6 +25,9 @@ import eu.kanade.presentation.theme.colorscheme.TokyoNightColorScheme
 import eu.kanade.presentation.theme.colorscheme.YinYangColorScheme
 import eu.kanade.presentation.theme.colorscheme.YotsubaColorScheme
 import mihon.app.di.appGraph
+import androidx.compose.foundation.shape.androidx.compose.foundation.shape.RoundedCornerShap
+import androidx.compose.ui.unit.dp
+import androidx.compose.material3.Shapes2
 
 @Composable
 fun TachiyomiTheme(
@@ -65,6 +68,7 @@ private fun BaseTachiyomiTheme(
                 isAmoled = isAmoled,
             )
         },
+        shapes = RoundedShapes,
         content = content,
     )
 }
@@ -103,3 +107,10 @@ private val colorSchemes: Map<AppTheme, BaseColorScheme> = mapOf(
     AppTheme.YINYANG to YinYangColorScheme,
     AppTheme.YOTSUBA to YotsubaColorScheme,
 )
+val RoundedShapes = Shapes(
+    extraSmall = RoundedCornerShape(10.dp),
+        small = RoundedCornerShape(14.dp),
+            medium = RoundedCornerShape(20.dp),
+                large = RoundedCornerShape(28.dp),
+                    extraLarge = RoundedCornerShape(36.dp),
+                    )
