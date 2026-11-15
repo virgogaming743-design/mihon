@@ -1,5 +1,6 @@
 package eu.kanade.tachiyomi.ui.home
 
+import android.os.Build
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
@@ -55,6 +56,13 @@ import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
 import cafe.adriel.voyager.navigator.tab.LocalTabNavigator
 import cafe.adriel.voyager.navigator.tab.TabNavigator
+import com.kyant.backdrop.backdrops.layerBackdrop
+import com.kyant.backdrop.backdrops.rememberLayerBackdrop
+import com.kyant.backdrop.drawBackdrop
+import com.kyant.backdrop.effects.blur
+import com.kyant.backdrop.effects.lens
+import com.kyant.backdrop.effects.vibrancy
+import eu.kanade.presentation.components.GlassSettings
 import eu.kanade.presentation.util.Screen
 import eu.kanade.presentation.util.isTabletUi
 import eu.kanade.tachiyomi.ui.browse.BrowseTab
@@ -89,6 +97,8 @@ object HomeScreen : Screen() {
 
     @Suppress("ConstPropertyName")
     private const val TabNavigatorKey = "HomeTabs"
+
+    private val PillShape = RoundedCornerShape(50)
 
     private val TABS = listOf(
         LibraryTab,
@@ -160,8 +170,42 @@ object HomeScreen : Screen() {
                         tabContent()
                     }
                 } else {
+                    val context = LocalContext.current
+                    remember(context) { GlassSettings.load(context) }
+                    val glassOn = GlassSettings.enabled && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
+                    val backdrop = rememberLayerBackdrop()
+                    val glassTint = MaterialTheme.colorScheme.surface.copy(alpha = 0.35f)
+                    val solidColor = MaterialTheme.colorScheme.surfaceContainerHigh
+
+                    val contentModifier = if (glassOn) {
+                        Modifier
+                            .fillMaxSize()
+                            .layerBackdrop(backdrop)
+                    } else {
+                        Modifier.fillMaxSize()
+                    }
+                    val pillSurface = if (glassOn) {
+                        Modifier.drawBackdrop(
+                            backdrop = backdrop,
+                            shape = { PillShape },
+                            effects = {
+                                vibrancy()
+                                blur(4f.dp.toPx())
+                                lens(16f.dp.toPx(), 32f.dp.toPx())
+                            },
+                            onDrawSurface = { drawRect(glassTint) },
+                        )
+                    } else {
+                        Modifier
+                            .shadow(12.dp, PillShape)
+                            .clip(PillShape)
+                            .background(solidColor)
+                    }
+
                     Box(modifier = Modifier.fillMaxSize()) {
-                        tabContent()
+                        Box(modifier = contentModifier) {
+                            tabContent()
+                        }
                         AnimatedVisibility(
                             visible = pillVisible,
                             modifier = Modifier.align(Alignment.BottomCenter),
@@ -170,7 +214,7 @@ object HomeScreen : Screen() {
                             exit = slideOutVertically(tween(PillAnimDuration)) { it } +
                                 fadeOut(tween(PillAnimDuration)),
                         ) {
-                            FloatingPillNavBar()
+                            FloatingPillNavBar(pillSurface)
                         }
                     }
                 }
@@ -215,19 +259,16 @@ object HomeScreen : Screen() {
     }
 
     @Composable
-    private fun FloatingPillNavBar() {
+    private fun FloatingPillNavBar(surface: Modifier) {
         val tabNavigator = LocalTabNavigator.current
         val navigator = LocalNavigator.currentOrThrow
         val scope = rememberCoroutineScope()
-        val pill = RoundedCornerShape(50)
 
         Row(
             modifier = Modifier
                 .navigationBarsPadding()
                 .padding(horizontal = 20.dp, vertical = 16.dp)
-                .shadow(12.dp, pill)
-                .clip(pill)
-                .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+                .then(surface)
                 .padding(horizontal = 8.dp, vertical = 8.dp),
             horizontalArrangement = Arrangement.spacedBy(4.dp),
             verticalAlignment = Alignment.CenterVertically,
@@ -246,7 +287,7 @@ object HomeScreen : Screen() {
                 val badge = tabBadge(tab)
                 Column(
                     modifier = Modifier
-                        .clip(pill)
+                        .clip(PillShape)
                         .clickable {
                             if (!selected) {
                                 tabNavigator.current = tab
