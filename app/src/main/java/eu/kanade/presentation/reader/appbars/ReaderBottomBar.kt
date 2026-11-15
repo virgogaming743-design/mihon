@@ -2,12 +2,16 @@ package eu.kanade.presentation.reader.appbars
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.unit.dp
+import eu.kanade.presentation.reader.components.readerBarSurface
 import eu.kanade.tachiyomi.ui.reader.setting.ReaderOrientation
 import eu.kanade.tachiyomi.ui.reader.setting.ReadingMode
 import mihon.icons.custommaterialsymbols.CustomMaterialSymbols
@@ -31,8 +35,10 @@ fun ReaderBottomBar(
 ) {
     Row(
         modifier = modifier
-            .pointerInput(Unit) {},
-        horizontalArrangement = Arrangement.SpaceEvenly,
+            .readerBarSurface(RoundedCornerShape(50))
+            .pointerInput(Unit) {}
+            .padding(horizontal = 8.dp, vertical = 2.dp),
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         IconButton(onClick = onClickReadingMode) {
