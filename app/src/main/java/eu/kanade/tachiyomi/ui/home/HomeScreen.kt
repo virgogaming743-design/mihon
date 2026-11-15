@@ -78,6 +78,8 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
 import mihon.app.di.appGraph
+import mihon.icons.materialsymbols.MaterialSymbols
+import mihon.icons.materialsymbols.rounded.Search
 import soup.compose.material.motion.animation.materialFadeThroughIn
 import soup.compose.material.motion.animation.materialFadeThroughOut
 import tachiyomi.i18n.MR
@@ -106,6 +108,13 @@ object HomeScreen : Screen() {
         HistoryTab,
         BrowseTab,
         MoreTab,
+    )
+
+    private val PILL_TABS = listOf(
+        LibraryTab,
+        UpdatesTab,
+        HistoryTab,
+        BrowseTab,
     )
 
     @Composable
@@ -273,7 +282,22 @@ object HomeScreen : Screen() {
             horizontalArrangement = Arrangement.spacedBy(4.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            TABS.fastForEach { tab ->
+            PILL_TABS.forEachIndexed { index, tab ->
+                if (index == 2) {
+                    Box(
+                        modifier = Modifier
+                            .clip(PillShape)
+                            .clickable { scope.launch { search("") } }
+                            .padding(horizontal = 14.dp, vertical = 6.dp),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(
+                            imageVector = MaterialSymbols.Rounded.Search,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
                 val selected = tabNavigator.current::class == tab::class
                 val tint by animateColorAsState(
                     targetValue = if (selected) {
