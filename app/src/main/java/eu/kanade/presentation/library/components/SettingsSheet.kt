@@ -168,6 +168,18 @@ fun SettingsSheet(onDismiss: () -> Unit) {
                             },
                         )
                         SheetRow(
+                            icon = MaterialSymbols.Rounded.Eyeglasses2,
+                            title = "Liquid glass",
+                            subtitle = "Glass navigation bar (Android 13+)",
+                            onClick = { GlassSettings.set(context, !GlassSettings.enabled) },
+                            trailing = {
+                                Switch(
+                                    checked = GlassSettings.enabled,
+                                    onCheckedChange = { GlassSettings.set(context, it) },
+                                )
+                            },
+                        )
+                        SheetRow(
                             icon = MaterialSymbols.Rounded.Download,
                             title = stringResource(MR.strings.label_download_queue),
                             onClick = {
