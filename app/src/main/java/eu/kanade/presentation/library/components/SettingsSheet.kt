@@ -32,7 +32,6 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -40,6 +39,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
@@ -47,6 +47,7 @@ import androidx.compose.ui.window.DialogProperties
 import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
 import dev.zacsweers.metrox.viewmodel.metroViewModel
+import eu.kanade.presentation.components.GlassSettings
 import eu.kanade.tachiyomi.ui.category.CategoryScreen
 import eu.kanade.tachiyomi.ui.download.DownloadQueueScreen
 import eu.kanade.tachiyomi.ui.more.MoreViewModel
@@ -75,6 +76,8 @@ fun SettingsSheet(onDismiss: () -> Unit) {
     val navigator = LocalNavigator.currentOrThrow
     val viewModel = metroViewModel<MoreViewModel>()
     val uriHandler = LocalUriHandler.current
+    val context = LocalContext.current
+    GlassSettings.load(context)
     val maxHeight = (LocalConfiguration.current.screenHeightDp * 0.85f).dp
 
     val visibleState = remember { MutableTransitionState(false).apply { targetState = true } }
@@ -166,7 +169,7 @@ fun SettingsSheet(onDismiss: () -> Unit) {
                                     onCheckedChange = { viewModel.incognitoMode = it },
                                 )
                             },
-                        ) 
+                        )
                         SheetRow(
                             icon = MaterialSymbols.Rounded.Eyeglasses2,
                             title = "Liquid glass",
@@ -203,99 +206,6 @@ fun SettingsSheet(onDismiss: () -> Unit) {
                                 navigator.push(StatsScreen())
                             },
                         )
-                        SheetRow(
-                            icon = MaterialSymbols.Rounded.Storage,
-                            title = stringResource(MR.strings.label_data_storage),
-                            onClick = {
-                                dismiss()
-                                navigator.push(SettingsScreen(SettingsScreen.Destination.DataAndStorage))
-                            },
-                        )
-                        SheetRow(
-                            icon = MaterialSymbols.Rounded.Settings,
-                            title = stringResource(MR.strings.label_settings),
-                            onClick = {
-                                dismiss()
-                                navigator.push(SettingsScreen())
-                            },
-                        )
-                        SheetRow(
-                            icon = MaterialSymbols.RoundedFilled.VolunteerActivism,
-                            title = stringResource(MR.strings.label_support_us),
-                            onClick = {
-                                dismiss()
-                                navigator.push(SupportUsScreen())
-                            },
-                        )
-                        SheetRow(
-                            icon = MaterialSymbols.Rounded.Info,
-                            title = stringResource(MR.strings.pref_category_about),
-                            onClick = {
-                                dismiss()
-                                navigator.push(SettingsScreen(SettingsScreen.Destination.About))
-                            },
-                        )
-                        SheetRow(
-                            icon = MaterialSymbols.AutoMirroredRounded.Help,
-                            title = stringResource(MR.strings.label_help),
-                            onClick = { uriHandler.openUri(Constants.URL_HELP) },
-                        )
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun SheetRow(
-    icon: ImageVector,
-    title: String,
-    onClick: () -> Unit,
-    subtitle: String? = null,
-    trailing: @Composable (() -> Unit)? = null,
-) {
-    Surface(
-        onClick = onClick,
-        shape = RoundedCornerShape(24.dp),
-        color = MaterialTheme.colorScheme.surfaceContainerHigh,
-        modifier = Modifier.fillMaxWidth(),
-    ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(44.dp)
-                    .clip(RoundedCornerShape(16.dp))
-                    .background(MaterialTheme.colorScheme.primaryContainer),
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(
-                    imageVector = icon,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                )
-            }
-            Spacer(modifier = Modifier.width(16.dp))
-            Column(modifier = Modifier.weight(1f)) {
-                Text(text = title, style = MaterialTheme.typography.titleMedium)
-                if (subtitle != null) {
-                    Text(
-                        text = subtitle,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-            }
-            if (trailing != null) {
-                Spacer(modifier = Modifier.width(12.dp))
-                trailing()
-            }
-        }
-    }
-}           )
                         SheetRow(
                             icon = MaterialSymbols.Rounded.Storage,
                             title = stringResource(MR.strings.label_data_storage),
