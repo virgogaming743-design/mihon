@@ -74,6 +74,7 @@ android {
             isPseudoLocalesEnabled = true
         }
         val release = getByName("release") {
+            applicationIdSuffix = ".makima"
             isMinifyEnabled = true
             isShrinkResources = true
 
