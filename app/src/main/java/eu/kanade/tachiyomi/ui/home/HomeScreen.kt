@@ -2,9 +2,27 @@ package eu.kanade.tachiyomi.ui.home
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Badge
+import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -18,9 +36,15 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -61,6 +85,9 @@ object HomeScreen : Screen() {
     private const val TabFadeDuration = 200
 
     @Suppress("ConstPropertyName")
+    private const val PillAnimDuration = 600
+
+    @Suppress("ConstPropertyName")
     private const val TabNavigatorKey = "HomeTabs"
 
     private val TABS = listOf(
@@ -87,9 +114,11 @@ object HomeScreen : Screen() {
                     NavigationSuiteType.NavigationBar
                 }
                 val navigationSuiteState = rememberNavigationSuiteScaffoldState()
+                var pillVisible by remember { mutableStateOf(true) }
                 LaunchedEffect(navigationSuiteState, tabletUi) {
                     if (tabletUi) navigationSuiteState.show()
                     showBottomNavEvent.receiveAsFlow().collectLatest { show ->
+                        pillVisible = show
                         if (tabletUi || show) {
                             navigationSuiteState.show()
                         } else {
@@ -98,18 +127,7 @@ object HomeScreen : Screen() {
                     }
                 }
 
-                NavigationSuiteScaffold(
-                    navigationSuiteType = navigationSuiteType,
-                    state = navigationSuiteState,
-                    navigationSuiteColors = NavigationSuiteDefaults.colors(
-                        navigationRailContainerColor = MaterialTheme.colorScheme
-                            .surfaceColorAtElevation(3.dp),
-                    ),
-                    navigationItemVerticalArrangement = Arrangement.Center,
-                    navigationItems = {
-                        TABS.fastForEach { NavigationSuiteItem(it, navigationSuiteType) }
-                    },
-                ) {
+                val tabContent: @Composable () -> Unit = {
                     AnimatedContent(
                         targetState = tabNavigator.current,
                         transitionSpec = {
@@ -122,6 +140,37 @@ object HomeScreen : Screen() {
                     ) {
                         tabNavigator.saveableState(key = "currentTab", it) {
                             it.Content()
+                        }
+                    }
+                }
+
+                if (tabletUi) {
+                    NavigationSuiteScaffold(
+                        navigationSuiteType = navigationSuiteType,
+                        state = navigationSuiteState,
+                        navigationSuiteColors = NavigationSuiteDefaults.colors(
+                            navigationRailContainerColor = MaterialTheme.colorScheme
+                                .surfaceColorAtElevation(3.dp),
+                        ),
+                        navigationItemVerticalArrangement = Arrangement.Center,
+                        navigationItems = {
+                            TABS.fastForEach { NavigationSuiteItem(it, navigationSuiteType) }
+                        },
+                    ) {
+                        tabContent()
+                    }
+                } else {
+                    Box(modifier = Modifier.fillMaxSize()) {
+                        tabContent()
+                        AnimatedVisibility(
+                            visible = pillVisible,
+                            modifier = Modifier.align(Alignment.BottomCenter),
+                            enter = slideInVertically(tween(PillAnimDuration)) { it } +
+                                fadeIn(tween(PillAnimDuration)),
+                            exit = slideOutVertically(tween(PillAnimDuration)) { it } +
+                                fadeOut(tween(PillAnimDuration)),
+                        ) {
+                            FloatingPillNavBar()
                         }
                     }
                 }
@@ -159,6 +208,79 @@ object HomeScreen : Screen() {
                         if (it is Tab.More && it.toDownloads) {
                             navigator.push(DownloadQueueScreen)
                         }
+                    }
+                }
+            }
+        }
+    }
+
+    @Composable
+    private fun FloatingPillNavBar() {
+        val tabNavigator = LocalTabNavigator.current
+        val navigator = LocalNavigator.currentOrThrow
+        val scope = rememberCoroutineScope()
+        val pill = RoundedCornerShape(50)
+
+        Row(
+            modifier = Modifier
+                .navigationBarsPadding()
+                .padding(horizontal = 20.dp, vertical = 16.dp)
+                .shadow(12.dp, pill)
+                .clip(pill)
+                .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+                .padding(horizontal = 8.dp, vertical = 8.dp),
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            TABS.fastForEach { tab ->
+                val selected = tabNavigator.current::class == tab::class
+                val tint by animateColorAsState(
+                    targetValue = if (selected) {
+                        MaterialTheme.colorScheme.primary
+                    } else {
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                    },
+                    animationSpec = tween(PillAnimDuration),
+                    label = "pillTint",
+                )
+                val badge = tabBadge(tab)
+                Column(
+                    modifier = Modifier
+                        .clip(pill)
+                        .clickable {
+                            if (!selected) {
+                                tabNavigator.current = tab
+                            } else {
+                                scope.launch { tab.onReselect(navigator) }
+                            }
+                        }
+                        .animateContentSize(tween(PillAnimDuration))
+                        .padding(horizontal = 14.dp, vertical = 6.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    if (badge != null) {
+                        BadgedBox(badge = { badge() }) {
+                            Icon(
+                                painter = tab.options.icon!!,
+                                contentDescription = tab.options.title,
+                                tint = tint,
+                            )
+                        }
+                    } else {
+                        Icon(
+                            painter = tab.options.icon!!,
+                            contentDescription = tab.options.title,
+                            tint = tint,
+                        )
+                    }
+                    if (selected) {
+                        Text(
+                            text = tab.options.title,
+                            color = tint,
+                            style = MaterialTheme.typography.labelMedium,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
                     }
                 }
             }
