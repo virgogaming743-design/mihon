@@ -166,7 +166,7 @@ fun SettingsSheet(onDismiss: () -> Unit) {
                                     onCheckedChange = { viewModel.incognitoMode = it },
                                 )
                             },
-                        )
+                        ) 
                         SheetRow(
                             icon = MaterialSymbols.Rounded.Eyeglasses2,
                             title = "Liquid glass",
@@ -203,6 +203,99 @@ fun SettingsSheet(onDismiss: () -> Unit) {
                                 navigator.push(StatsScreen())
                             },
                         )
+                        SheetRow(
+                            icon = MaterialSymbols.Rounded.Storage,
+                            title = stringResource(MR.strings.label_data_storage),
+                            onClick = {
+                                dismiss()
+                                navigator.push(SettingsScreen(SettingsScreen.Destination.DataAndStorage))
+                            },
+                        )
+                        SheetRow(
+                            icon = MaterialSymbols.Rounded.Settings,
+                            title = stringResource(MR.strings.label_settings),
+                            onClick = {
+                                dismiss()
+                                navigator.push(SettingsScreen())
+                            },
+                        )
+                        SheetRow(
+                            icon = MaterialSymbols.RoundedFilled.VolunteerActivism,
+                            title = stringResource(MR.strings.label_support_us),
+                            onClick = {
+                                dismiss()
+                                navigator.push(SupportUsScreen())
+                            },
+                        )
+                        SheetRow(
+                            icon = MaterialSymbols.Rounded.Info,
+                            title = stringResource(MR.strings.pref_category_about),
+                            onClick = {
+                                dismiss()
+                                navigator.push(SettingsScreen(SettingsScreen.Destination.About))
+                            },
+                        )
+                        SheetRow(
+                            icon = MaterialSymbols.AutoMirroredRounded.Help,
+                            title = stringResource(MR.strings.label_help),
+                            onClick = { uriHandler.openUri(Constants.URL_HELP) },
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun SheetRow(
+    icon: ImageVector,
+    title: String,
+    onClick: () -> Unit,
+    subtitle: String? = null,
+    trailing: @Composable (() -> Unit)? = null,
+) {
+    Surface(
+        onClick = onClick,
+        shape = RoundedCornerShape(24.dp),
+        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(44.dp)
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(MaterialTheme.colorScheme.primaryContainer),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                )
+            }
+            Spacer(modifier = Modifier.width(16.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(text = title, style = MaterialTheme.typography.titleMedium)
+                if (subtitle != null) {
+                    Text(
+                        text = subtitle,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+            if (trailing != null) {
+                Spacer(modifier = Modifier.width(12.dp))
+                trailing()
+            }
+        }
+    }
+}           )
                         SheetRow(
                             icon = MaterialSymbols.Rounded.Storage,
                             title = stringResource(MR.strings.label_data_storage),
