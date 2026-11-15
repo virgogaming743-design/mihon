@@ -1,42 +1,46 @@
 package eu.kanade.presentation.reader.components
 
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.interaction.DragInteraction
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsDraggedAsState
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButtonColors
-import androidx.compose.material3.IconButtonDefaults
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderState
 import androidx.compose.material3.Text
 import androidx.compose.material3.VerticalSlider
 import androidx.compose.material3.rememberSliderState
-import androidx.compose.material3.surfaceColorAtElevation
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.tooling.preview.Preview
@@ -81,7 +85,7 @@ fun ChapterNavigator(
         key(totalPages) {
             rememberSliderState(
                 value = currentPage.toFloat(),
-                steps = totalPages - 2,
+                steps = 0,
                 trackRange = 1f..totalPages.toFloat(),
             )
         }
@@ -103,21 +107,12 @@ fun ChapterNavigator(
     val isTabletUi = isTabletUi()
     val mainAxisPadding = if (isTabletUi) 24.dp else 8.dp
 
-    // Match with toolbar background color set in ReaderActivity
-    val backgroundColor = MaterialTheme.colorScheme
-        .surfaceColorAtElevation(3.dp)
-        .copy(alpha = if (isSystemInDarkTheme()) 0.9f else 0.95f)
-    val buttonColor = IconButtonDefaults.filledIconButtonColors(
-        containerColor = backgroundColor,
-        disabledContainerColor = backgroundColor,
-    )
-
     val onPageChange: (Int) -> Unit = { onPageIndexChange(it - 1) }
 
     if (type.isHorizontal()) {
         HorizontalChapterNavigator(
             isRtl = type == ChapterNavigatorType.HORIZONTAL_RTL,
-            state = state,
+            hasPages = state != null,
             onNextChapter = onNextChapter,
             enabledNext = enabledNext,
             onPreviousChapter = onPreviousChapter,
@@ -128,8 +123,6 @@ fun ChapterNavigator(
             onPageChangeFinished = onPageIndexChangeFinished,
             interactionSource = interactionSource,
             mainAxisPadding = mainAxisPadding,
-            backgroundColor = backgroundColor,
-            buttonColor = buttonColor,
             modifier = modifier,
         )
     } else {
@@ -145,17 +138,126 @@ fun ChapterNavigator(
             onPageChangeFinished = onPageIndexChangeFinished,
             interactionSource = interactionSource,
             mainAxisPadding = mainAxisPadding,
-            backgroundColor = backgroundColor,
-            buttonColor = buttonColor,
             modifier = modifier,
         )
     }
 }
 
 @Composable
+private fun NavButton(
+    enabled: Boolean,
+    onClick: () -> Unit,
+    content: @Composable () -> Unit,
+) {
+    IconButton(
+        onClick = onClick,
+        enabled = enabled,
+        modifier = Modifier
+            .size(40.dp)
+            .readerBarSurface(CircleShape),
+        content = content,
+    )
+}
+
+@Composable
+private fun ThinPageSlider(
+    currentPage: Int,
+    totalPages: Int,
+    onPageChange: (Int) -> Unit,
+    onPageChangeFinished: () -> Unit,
+    interactionSource: MutableInteractionSource,
+    modifier: Modifier = Modifier,
+) {
+    val isRtl = LocalLayoutDirection.current == LayoutDirection.Rtl
+    val currentOnPageChange by rememberUpdatedState(onPageChange)
+    val currentOnFinished by rememberUpdatedState(onPageChangeFinished)
+    var dragging by remember { mutableStateOf(false) }
+    var dragStart by remember { mutableStateOf<DragInteraction.Start?>(null) }
+
+    val fraction = if (totalPages > 1) {
+        ((currentPage - 1f) / (totalPages - 1f)).coerceIn(0f, 1f)
+    } else {
+        0f
+    }
+    val activeColor = MaterialTheme.colorScheme.onSurface
+    val inactiveColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.25f)
+    val thumbSize by animateDpAsState(
+        targetValue = if (dragging) 14.dp else 0.dp,
+        label = "pageSliderThumb",
+    )
+
+    fun pageAt(x: Float, width: Float): Int {
+        val raw = (x / width).coerceIn(0f, 1f)
+        val f = if (isRtl) 1f - raw else raw
+        return (f * (totalPages - 1)).roundToInt() + 1
+    }
+
+    fun stopDrag() {
+        dragging = false
+        dragStart?.let { interactionSource.tryEmit(DragInteraction.Stop(it)) }
+        dragStart = null
+        currentOnFinished()
+    }
+
+    Box(
+        modifier = modifier
+            .height(32.dp)
+            .pointerInput(totalPages, isRtl) {
+                detectTapGestures { offset ->
+                    currentOnPageChange(pageAt(offset.x, size.width.toFloat()))
+                    currentOnFinished()
+                }
+            }
+            .pointerInput(totalPages, isRtl) {
+                detectHorizontalDragGestures(
+                    onDragStart = { offset ->
+                        dragging = true
+                        val start = DragInteraction.Start()
+                        dragStart = start
+                        interactionSource.tryEmit(start)
+                        currentOnPageChange(pageAt(offset.x, size.width.toFloat()))
+                    },
+                    onDragEnd = { stopDrag() },
+                    onDragCancel = { stopDrag() },
+                    onHorizontalDrag = { change, _ ->
+                        change.consume()
+                        currentOnPageChange(pageAt(change.position.x, size.width.toFloat()))
+                    },
+                )
+            },
+        contentAlignment = Alignment.CenterStart,
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(4.dp)
+                .clip(RoundedCornerShape(50))
+                .background(inactiveColor),
+        )
+        Box(
+            modifier = Modifier
+                .fillMaxWidth(fraction)
+                .height(4.dp)
+                .clip(RoundedCornerShape(50))
+                .background(activeColor),
+        )
+        Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Spacer(modifier = Modifier.weight(fraction.coerceAtLeast(0.001f)))
+            Box(
+                modifier = Modifier
+                    .size(thumbSize)
+                    .clip(CircleShape)
+                    .background(activeColor),
+            )
+            Spacer(modifier = Modifier.weight((1f - fraction).coerceAtLeast(0.001f)))
+        }
+    }
+}
+
+@Composable
 fun HorizontalChapterNavigator(
     isRtl: Boolean,
-    state: SliderState?,
+    hasPages: Boolean,
     onNextChapter: () -> Unit,
     enabledNext: Boolean,
     onPreviousChapter: () -> Unit,
@@ -166,8 +268,6 @@ fun HorizontalChapterNavigator(
     onPageChangeFinished: () -> Unit,
     interactionSource: MutableInteractionSource,
     mainAxisPadding: Dp,
-    backgroundColor: Color,
-    buttonColor: IconButtonColors,
     modifier: Modifier = Modifier,
 ) {
     val layoutDirection = if (isRtl) LayoutDirection.Rtl else LayoutDirection.Ltr
@@ -180,10 +280,9 @@ fun HorizontalChapterNavigator(
                 .padding(horizontal = mainAxisPadding),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            FilledIconButton(
+            NavButton(
                 enabled = if (isRtl) enabledNext else enabledPrevious,
                 onClick = if (isRtl) onNextChapter else onPreviousChapter,
-                colors = buttonColor,
             ) {
                 Icon(
                     imageVector = MaterialSymbols.Rounded.SkipPrevious,
@@ -193,43 +292,47 @@ fun HorizontalChapterNavigator(
                 )
             }
 
-            if (state != null) {
+            if (hasPages) {
                 CompositionLocalProvider(LocalLayoutDirection provides layoutDirection) {
                     Row(
                         modifier = Modifier
                             .weight(1f)
-                            .clip(RoundedCornerShape(24.dp))
-                            .background(backgroundColor)
-                            .padding(horizontal = 16.dp),
+                            .padding(horizontal = 8.dp)
+                            .readerBarSurface(RoundedCornerShape(50))
+                            .padding(horizontal = 16.dp, vertical = 4.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Box(contentAlignment = Alignment.CenterEnd) {
-                            Text(text = currentPage.toString())
+                            Text(text = currentPage.toString(), style = MaterialTheme.typography.labelMedium)
                             // Taking up full length so the slider doesn't shift when 'currentPage' length changes
-                            Text(text = totalPages.toString(), color = Color.Transparent)
+                            Text(
+                                text = totalPages.toString(),
+                                style = MaterialTheme.typography.labelMedium,
+                                color = androidx.compose.ui.graphics.Color.Transparent,
+                            )
                         }
 
-                        Slider(
-                            state = state,
+                        ThinPageSlider(
+                            currentPage = currentPage,
+                            totalPages = totalPages,
+                            onPageChange = onPageChange,
+                            onPageChangeFinished = onPageChangeFinished,
+                            interactionSource = interactionSource,
                             modifier = Modifier
                                 .weight(1f)
-                                .padding(horizontal = 8.dp),
-                            onValueChange = { onPageChange(it.roundToInt()) },
-                            onValueChangeFinished = onPageChangeFinished,
-                            interactionSource = interactionSource,
+                                .padding(horizontal = 12.dp),
                         )
 
-                        Text(text = totalPages.toString())
+                        Text(text = totalPages.toString(), style = MaterialTheme.typography.labelMedium)
                     }
                 }
             } else {
                 Spacer(Modifier.weight(1f))
             }
 
-            FilledIconButton(
+            NavButton(
                 enabled = if (isRtl) enabledPrevious else enabledNext,
                 onClick = if (isRtl) onPreviousChapter else onNextChapter,
-                colors = buttonColor,
             ) {
                 Icon(
                     imageVector = MaterialSymbols.Rounded.SkipNext,
@@ -255,8 +358,6 @@ fun VerticalChapterNavigator(
     onPageChangeFinished: () -> Unit,
     interactionSource: MutableInteractionSource,
     mainAxisPadding: Dp,
-    backgroundColor: Color,
-    buttonColor: IconButtonColors,
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -265,10 +366,9 @@ fun VerticalChapterNavigator(
             .padding(vertical = mainAxisPadding),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        FilledIconButton(
+        NavButton(
             enabled = enabledPrevious,
             onClick = onPreviousChapter,
-            colors = buttonColor,
         ) {
             Icon(
                 imageVector = MaterialSymbols.Rounded.SkipPrevious,
@@ -281,12 +381,11 @@ fun VerticalChapterNavigator(
             Column(
                 modifier = Modifier
                     .weight(1f)
-                    .clip(RoundedCornerShape(24.dp))
-                    .background(backgroundColor)
+                    .readerBarSurface(RoundedCornerShape(24.dp))
                     .padding(vertical = 16.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
-                Text(text = currentPage.toString())
+                Text(text = currentPage.toString(), style = MaterialTheme.typography.labelMedium)
 
                 VerticalSlider(
                     state = state,
@@ -298,16 +397,15 @@ fun VerticalChapterNavigator(
                     interactionSource = interactionSource,
                 )
 
-                Text(text = totalPages.toString())
+                Text(text = totalPages.toString(), style = MaterialTheme.typography.labelMedium)
             }
         } else {
             Spacer(Modifier.weight(1f))
         }
 
-        FilledIconButton(
+        NavButton(
             enabled = enabledNext,
             onClick = onNextChapter,
-            colors = buttonColor,
         ) {
             Icon(
                 imageVector = MaterialSymbols.Rounded.SkipNext,
