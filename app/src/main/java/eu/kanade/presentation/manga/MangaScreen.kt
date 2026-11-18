@@ -334,6 +334,7 @@ private fun MangaScreenSmallImpl(
                 },
                 icon = { Icon(imageVector = MaterialSymbols.RoundedFilled.PlayArrow, contentDescription = null) },
                 onClick = onContinueReading,
+                shape = androidx.compose.foundation.shape.CircleShape,
                 expanded = chapterListState.shouldExpandFAB(),
                 modifier = Modifier.animateFloatingActionButton(
                     visible = isFABVisible,
@@ -565,6 +566,7 @@ fun MangaScreenLargeImpl(
                 },
                 icon = { Icon(imageVector = MaterialSymbols.RoundedFilled.PlayArrow, contentDescription = null) },
                 onClick = onContinueReading,
+                shape = androidx.compose.foundation.shape.CircleShape,
                 expanded = chapterListState.shouldExpandFAB(),
                 modifier = Modifier.animateFloatingActionButton(
                     visible = isFABVisible,
