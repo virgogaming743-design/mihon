@@ -1,5 +1,10 @@
 package eu.kanade.presentation.manga.components
 
+import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.border
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
@@ -720,7 +725,8 @@ private fun TagsChip(
         SuggestionChip(
             modifier = modifier,
             onClick = onClick,
-            label = { Text(text = text, style = MaterialTheme.typography.bodySmall) },
+            shape = CircleShape,
+            label = { Text(text = text, style = MaterialTheme.typography.bodyMedium) },
         )
     }
 }
@@ -733,25 +739,43 @@ private fun RowScope.MangaActionButton(
     onClick: () -> Unit,
     onLongClick: (() -> Unit)? = null,
 ) {
-    TextButton(
-        onClick = onClick,
-        modifier = Modifier.weight(1f),
-        onLongClick = onLongClick,
+    val shape = RoundedCornerShape(22.dp)
+    val active = color == MaterialTheme.colorScheme.primary
+    val borderColor = if (active) {
+        MaterialTheme.colorScheme.primary.copy(alpha = 0.6f)
+    } else {
+        MaterialTheme.colorScheme.outlineVariant
+    }
+    val fill = if (active) {
+        MaterialTheme.colorScheme.primary.copy(alpha = 0.18f)
+    } else {
+        MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.5f)
+    }
+    Column(
+        modifier = Modifier
+            .weight(1f)
+            .padding(horizontal = 4.dp)
+            .clip(shape)
+            .background(fill)
+            .border(1.dp, borderColor, shape)
+            .combinedClickable(onClick = onClick, onLongClick = onLongClick)
+            .padding(horizontal = 4.dp, vertical = 14.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                tint = color,
-                modifier = Modifier.size(20.dp),
-            )
-            Spacer(Modifier.height(4.dp))
-            Text(
-                text = title,
-                color = color,
-                fontSize = 12.sp,
-                textAlign = TextAlign.Center,
-            )
-        }
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = color,
+            modifier = Modifier.size(24.dp),
+        )
+        Spacer(Modifier.height(6.dp))
+        Text(
+            text = title,
+            color = color,
+            fontSize = 12.sp,
+            textAlign = TextAlign.Center,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
     }
 }
